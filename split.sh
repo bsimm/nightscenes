@@ -88,15 +88,15 @@ cut_part () {
   fi
   echo "cutting from $1 during $3"
   printf -v fileout "$out/%04d_%s" $2 $filename
-  ffmpeg -y -loglevel error -hide_banner -ss $1 -i $file -c:v copy -c:a copy $stripaudio $duration_flag $3 $fileout < /dev/null
+  ffmpeg -y -loglevel error -hide_banner -ss $1 -i "$file" -c:v copy -c:a copy $stripaudio $duration_flag $3 "$fileout" < /dev/null
 }
 
-filename=`basename $file`
-mkdir -p $out
+filename=`basename "$file"`
+mkdir -p "$out"
 timefrom=0
 i=1
 
-ffmpeg -i $file -vf blackdetect=d=$dur:pic_th=$ratio:pix_th=$th -f null - 2> ffout
+ffmpeg -hide_banner -loglevel error -i "$file" -vf blackdetect=d=$dur:pic_th=$ratio:pix_th=$th -f null - 2> ffout
 black_start=( $(grep blackdetect ffout | grep black_start:[0-9.]* -o | grep "[0-9]*\.[0-9]*" -o) )
 black_duration=( $(grep blackdetect ffout | grep black_duration:[0-9.]* -o | grep "[0-9]*\.[0-9]*" -o) )
 > timestamps
