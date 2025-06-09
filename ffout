@@ -1,0 +1,43 @@
+ffmpeg version 4.3.1 Copyright (c) 2000-2020 the FFmpeg developers
+  built with Apple clang version 12.0.0 (clang-1200.0.32.27)
+  configuration: --prefix=/usr/local/Cellar/ffmpeg/4.3.1_4 --enable-shared --enable-pthreads --enable-version3 --enable-avresample --cc=clang --host-cflags= --host-ldflags= --enable-ffplay --enable-gnutls --enable-gpl --enable-libaom --enable-libbluray --enable-libdav1d --enable-libmp3lame --enable-libopus --enable-librav1e --enable-librubberband --enable-libsnappy --enable-libsrt --enable-libtesseract --enable-libtheora --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxml2 --enable-libxvid --enable-lzma --enable-libfontconfig --enable-libfreetype --enable-frei0r --enable-libass --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-librtmp --enable-libspeex --enable-libsoxr --enable-videotoolbox --disable-libjack --disable-indev=jack
+  libavutil      56. 51.100 / 56. 51.100
+  libavcodec     58. 91.100 / 58. 91.100
+  libavformat    58. 45.100 / 58. 45.100
+  libavdevice    58. 10.100 / 58. 10.100
+  libavfilter     7. 85.100 /  7. 85.100
+  libavresample   4.  0.  0 /  4.  0.  0
+  libswscale      5.  7.100 /  5.  7.100
+  libswresample   3.  7.100 /  3.  7.100
+  libpostproc    55.  7.100 / 55.  7.100
+Input #0, avi, from 'poop.avi':
+  Metadata:
+    encoder         : VirtualDubMod 1.5.4.1 (build 2178/release)
+    IAS1            : English
+  Duration: 01:02:08.35, start: 0.000000, bitrate: 792 kb/s
+    Stream #0:0: Video: mpeg4 (Advanced Simple Profile) (XVID / 0x44495658), yuv420p, 576x432 [SAR 1:1 DAR 4:3], 594 kb/s, 23.98 fps, 23.98 tbr, 23.98 tbn, 23.98 tbc
+    Stream #0:1: Audio: ac3 ([0] [0][0] / 0x2000), 48000 Hz, stereo, fltp, 192 kb/s
+Stream mapping:
+  Stream #0:0 -> #0:0 (mpeg4 (native) -> wrapped_avframe (native))
+  Stream #0:1 -> #0:1 (ac3 (native) -> pcm_s16le (native))
+Press [q] to stop, [?] for help
+Output #0, null, to 'pipe:':
+  Metadata:
+    IAS1            : English
+    encoder         : Lavf58.45.100
+    Stream #0:0: Video: wrapped_avframe, yuv420p, 576x432 [SAR 1:1 DAR 4:3], q=2-31, 200 kb/s, 23.98 fps, 23.98 tbn, 23.98 tbc
+    Metadata:
+      encoder         : Lavc58.91.100 wrapped_avframe
+    Stream #0:1: Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s
+    Metadata:
+      encoder         : Lavc58.91.100 pcm_s16le
+[blackdetect @ 0x7fe1c3939940] black_start:0.0417084 black_end:1.04271 black_duration:1.001
+[blackdetect @ 0x7fe1c3939940] black_start:5.9643 black_end:8.75876 black_duration:2.79446
+frame= 1534 fps=0.0 q=-0.0 size=N/A time=00:01:04.41 bitrate=N/A speed= 129x    frame= 3182 fps=3181 q=-0.0 size=N/A time=00:02:13.15 bitrate=N/A speed= 133x    frame= 4537 fps=3024 q=-0.0 size=N/A time=00:03:09.72 bitrate=N/A speed= 126x    frame= 6172 fps=3085 q=-0.0 size=N/A time=00:04:17.88 bitrate=N/A speed= 129x    [blackdetect @ 0x7fe1c3939940] black_start:262.638 black_end:263.639 black_duration:1.001
+[blackdetect @ 0x7fe1c3939940] black_start:266.642 black_end:267.893 black_duration:1.25125
+frame= 7863 fps=3144 q=-0.0 size=N/A time=00:05:28.48 bitrate=N/A speed= 131x    frame= 9564 fps=3187 q=-0.0 size=N/A time=00:06:39.39 bitrate=N/A speed= 133x    frame=11189 fps=3196 q=-0.0 size=N/A time=00:07:47.16 bitrate=N/A speed= 133x    frame=12849 fps=3211 q=-0.0 size=N/A time=00:08:56.35 bitrate=N/A speed= 134x    frame=14501 fps=3221 q=-0.0 size=N/A time=00:10:05.28 bitrate=N/A speed= 134x    frame=16173 fps=3234 q=-0.0 size=N/A time=00:11:14.97 bitrate=N/A speed= 135x    frame=17848 fps=3244 q=-0.0 size=N/A time=00:12:24.86 bitrate=N/A speed= 135x    frame=19511 fps=3251 q=-0.0 size=N/A time=00:13:34.27 bitrate=N/A speed= 136x    frame=21136 fps=3251 q=-0.0 size=N/A time=00:14:42.04 bitrate=N/A speed= 136x    frame=22799 fps=3256 q=-0.0 size=N/A time=00:15:51.39 bitrate=N/A speed= 136x    frame=24443 fps=3258 q=-0.0 size=N/A time=00:16:59.96 bitrate=N/A speed= 136x    frame=26107 fps=3263 q=-0.0 size=N/A time=00:18:09.31 bitrate=N/A speed= 136x    frame=27778 fps=3267 q=-0.0 size=N/A time=00:19:19.00 bitrate=N/A speed= 136x    frame=29394 fps=3265 q=-0.0 size=N/A time=00:20:26.40 bitrate=N/A speed= 136x    frame=31067 fps=3269 q=-0.0 size=N/A time=00:21:36.19 bitrate=N/A speed= 136x    frame=32743 fps=3274 q=-0.0 size=N/A time=00:22:46.11 bitrate=N/A speed= 137x    frame=34453 fps=3281 q=-0.0 size=N/A time=00:23:57.47 bitrate=N/A speed= 137x    frame=36124 fps=3283 q=-0.0 size=N/A time=00:25:07.13 bitrate=N/A speed= 137x    frame=37763 fps=3283 q=-0.0 size=N/A time=00:26:15.52 bitrate=N/A speed= 137x    frame=39397 fps=3282 q=-0.0 size=N/A time=00:27:23.64 bitrate=N/A speed= 137x    frame=41049 fps=3283 q=-0.0 size=N/A time=00:28:32.57 bitrate=N/A speed= 137x    frame=42380 fps=3259 q=-0.0 size=N/A time=00:29:28.06 bitrate=N/A speed= 136x    frame=44007 fps=3259 q=-0.0 size=N/A time=00:30:35.93 bitrate=N/A speed= 136x    frame=45699 fps=3263 q=-0.0 size=N/A time=00:31:46.46 bitrate=N/A speed= 136x    frame=47377 fps=3267 q=-0.0 size=N/A time=00:32:56.48 bitrate=N/A speed= 136x    frame=49023 fps=3267 q=-0.0 size=N/A time=00:34:05.08 bitrate=N/A speed= 136x    frame=50634 fps=3266 q=-0.0 size=N/A time=00:35:12.32 bitrate=N/A speed= 136x    frame=52275 fps=3266 q=-0.0 size=N/A time=00:36:20.76 bitrate=N/A speed= 136x    frame=53692 fps=3253 q=-0.0 size=N/A time=00:37:19.87 bitrate=N/A speed= 136x    frame=55267 fps=3250 q=-0.0 size=N/A time=00:38:25.63 bitrate=N/A speed= 136x    frame=56924 fps=3252 q=-0.0 size=N/A time=00:39:34.68 bitrate=N/A speed= 136x    frame=58595 fps=3255 q=-0.0 size=N/A time=00:40:44.35 bitrate=N/A speed= 136x    frame=60262 fps=3257 q=-0.0 size=N/A time=00:41:53.88 bitrate=N/A speed= 136x    frame=61930 fps=3259 q=-0.0 size=N/A time=00:43:03.45 bitrate=N/A speed= 136x    frame=63590 fps=3260 q=-0.0 size=N/A time=00:44:12.67 bitrate=N/A speed= 136x    frame=65266 fps=3263 q=-0.0 size=N/A time=00:45:22.56 bitrate=N/A speed= 136x    frame=66849 fps=3260 q=-0.0 size=N/A time=00:46:28.64 bitrate=N/A speed= 136x    frame=68451 fps=3259 q=-0.0 size=N/A time=00:47:35.42 bitrate=N/A speed= 136x    frame=70092 fps=3259 q=-0.0 size=N/A time=00:48:43.90 bitrate=N/A speed= 136x    frame=71738 fps=3260 q=-0.0 size=N/A time=00:49:52.57 bitrate=N/A speed= 136x    frame=73333 fps=3259 q=-0.0 size=N/A time=00:50:59.13 bitrate=N/A speed= 136x    frame=74947 fps=3258 q=-0.0 size=N/A time=00:52:06.36 bitrate=N/A speed= 136x    frame=76618 fps=3260 q=-0.0 size=N/A time=00:53:16.03 bitrate=N/A speed= 136x    frame=78263 fps=3260 q=-0.0 size=N/A time=00:54:24.67 bitrate=N/A speed= 136x    frame=79932 fps=3262 q=-0.0 size=N/A time=00:55:34.33 bitrate=N/A speed= 136x    frame=81601 fps=3263 q=-0.0 size=N/A time=00:56:43.87 bitrate=N/A speed= 136x    frame=83270 fps=3265 q=-0.0 size=N/A time=00:57:53.50 bitrate=N/A speed= 136x    frame=84943 fps=3266 q=-0.0 size=N/A time=00:59:03.32 bitrate=N/A speed= 136x    frame=86598 fps=3267 q=-0.0 size=N/A time=01:00:12.32 bitrate=N/A speed= 136x    [blackdetect @ 0x7fe1c3939940] black_start:3657.45 black_end:3658.95 black_duration:1.5015
+[blackdetect @ 0x7fe1c3939940] black_start:3662 black_end:3663.79 black_duration:1.79346
+[blackdetect @ 0x7fe1c3939940] black_start:3666.79 black_end:3668.34 black_duration:1.54321
+frame=88280 fps=3269 q=-0.0 size=N/A time=01:01:22.46 bitrate=N/A speed= 136x    [blackdetect @ 0x7fe1c3939940] black_start:3726.06 black_end:3728.35 black_duration:2.29396
+frame=89391 fps=3270 q=-0.0 Lsize=N/A time=01:02:08.39 bitrate=N/A speed= 136x    
+video:46791kB audio:699066kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
