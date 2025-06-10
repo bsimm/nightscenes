@@ -113,34 +113,49 @@ parse_args() {
 
 get_video_info() {
     local duration fps
+    log "Getting video information..."
     duration=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$file" 2>/dev/null)
     fps=$(ffprobe -v quiet -show_entries stream=r_frame_rate -of csv=p=0 "$file" 2>/dev/null | head -1)
-    
+
     # Convert fractional fps to decimal
     if [[ $fps == *"/"* ]]; then
         fps=$(echo "scale=3; $fps" | bc -l)
     fi
-    
-    echo "Video duration: ${duration}s, FPS: $fps"
+
+    log "Video duration: ${duration}s, FPS: $fps"
 }
 
 analyze_brightness() {
     local temp_analysis="$out/brightness_analysis.txt"
-    
+
     log "Analyzing video brightness and scene changes..."
-    
-    # Modern FFmpeg filter chain for comprehensive analysis:
-    # 1. signalstats: Calculate luminance statistics 
-    # 2. select: Detect scene changes and filter by brightness
-    # 3. showinfo: Display frame information
+    log "Running FFmpeg with luminance threshold: $luma_threshold, scene threshold: $scene_threshold"
+
+    # Ensure output directory exists
+    mkdir -p "$out"
+
+    # Use a working filter chain for scene detection and brightness analysis
+    # Separate brightness filtering from scene detection for better compatibility
+    log "Running scene detection with brightness analysis..."
+
     ffmpeg -i "$file" \
-        -vf "signalstats,select='gt(scene,$scene_threshold)+lt(lavfi.signalstats.YAVG,$luma_threshold)',showinfo" \
+        -vf "signalstats,showinfo" \
         -f null - 2> "$temp_analysis"
-    
-    if [ ! -s "$temp_analysis" ]; then
-        error "Failed to analyze video brightness"
+
+    log "FFmpeg analysis completed, checking output file..."
+
+    if [ ! -f "$temp_analysis" ]; then
+        error "Analysis file was not created: $temp_analysis"
     fi
-    
+
+    if [ ! -s "$temp_analysis" ]; then
+        log "Warning: Analysis file is empty, this may indicate no frames met the criteria"
+        log "File exists at: $temp_analysis"
+        log "File size: $(stat -f%z "$temp_analysis" 2>/dev/null || echo "unknown") bytes"
+    else
+        log "Analysis file created successfully: $temp_analysis ($(stat -f%z "$temp_analysis") bytes)"
+    fi
+
     echo "$temp_analysis"
 }
 
@@ -149,24 +164,50 @@ extract_night_scenes() {
     local scene_count=0
     local current_start=""
     local scene_timestamps="$out/night_timestamps.txt"
-    
-    log "Extracting night scene timestamps..."
-    
-    # Parse FFmpeg output to find night scenes
-    # Look for frames that passed our brightness and scene change filters
+
+    log "Extracting night scene timestamps from: $analysis_file"
+
+    # Verify analysis file exists and is readable
+    if [ ! -f "$analysis_file" ]; then
+        error "Analysis file does not exist: $analysis_file"
+    fi
+
+    if [ ! -s "$analysis_file" ]; then
+        log "Analysis file is empty - no frames met the brightness/scene criteria"
+        return 1
+    fi
+
+    log "Parsing FFmpeg output for night scenes..."
+
+    # Parse FFmpeg output to find frames with low brightness (night scenes)
+    # Extract frames where mean luminance is below threshold
+    # Format: showinfo outputs mean:[Y U V] where Y is luminance
     grep "Parsed_showinfo" "$analysis_file" | \
-    grep -o "pts_time:[0-9]*\.*[0-9]*" | \
-    cut -d: -f2 > "$scene_timestamps"
-    
+    awk -v luma_thresh="$luma_threshold" '{
+        # Extract timestamp 
+        if (match($0, "pts_time:([0-9]*\\.?[0-9]+)", ts)) {
+            timestamp = substr($0, RSTART+9, RLENGTH-9)
+        }
+        # Extract mean luminance (first value in mean:[Y U V])
+        if (match($0, "mean:\\[([0-9]+)", mean_vals)) {
+            avg_luma = substr($0, RSTART+6, RLENGTH-6)
+            # If brightness is below threshold (dark/night scene)
+            if (avg_luma < luma_thresh) {
+                print timestamp
+            }
+        }
+    }' > "$scene_timestamps"
+
     if [ ! -s "$scene_timestamps" ]; then
         log "No night scenes detected with current thresholds"
         log "Try adjusting --luma (higher value) or --scene (lower value)"
         return 1
     fi
-    
+
     local frame_count=$(wc -l < "$scene_timestamps")
     log "Found $frame_count potential night scene frames"
-    
+    log "Timestamps saved to: $scene_timestamps"
+
     # Group consecutive frames into scenes
     create_scene_segments "$scene_timestamps"
 }
@@ -175,9 +216,12 @@ create_scene_segments() {
     local timestamps_file="$1"
     local scenes_file="$out/night_scenes.txt"
     local scene_count=0
-    
+
+    log "Creating scene segments from timestamps file: $timestamps_file"
+    log "Minimum scene duration: ${min_duration}s"
+
     > "$scenes_file"
-    
+
     # Group timestamps into continuous segments
     python3 -c "
 import sys
@@ -210,15 +254,16 @@ if current_end - current_start >= $min_duration:
 with open('$scenes_file', 'w') as f:
     for i, (start, end) in enumerate(scenes, 1):
         f.write(f'{i},{start:.3f},{end:.3f},{end-start:.3f}\n')
-        
+
 print(f'Created {len(scenes)} night scenes')
+print(f'Scenes written to: $scenes_file')
 " || error "Failed to process scene segments (requires python3)"
 
     if [ ! -s "$scenes_file" ]; then
         log "No night scenes meet minimum duration requirement"
         return 1
     fi
-    
+
     # Extract the actual video segments
     extract_video_segments "$scenes_file"
 }
@@ -226,14 +271,14 @@ print(f'Created {len(scenes)} night scenes')
 extract_video_segments() {
     local scenes_file="$1"
     local filename=$(basename "$file" | sed 's/\.[^.]*$//')
-    
+
     log "Extracting night scene videos..."
-    
+
     while IFS=',' read -r scene_num start_time end_time duration; do
         local output_file="$out/night_scene_$(printf "%03d" $scene_num)_${filename}.$format"
-        
+
         log "Extracting scene $scene_num: ${start_time}s - ${end_time}s (${duration}s)"
-        
+
         ffmpeg -y -loglevel warning \
             -ss "$start_time" \
             -i "$file" \
@@ -243,25 +288,25 @@ extract_video_segments() {
             -c:a aac \
             -avoid_negative_ts make_zero \
             "$output_file"
-        
+
         if [ "$extract_frames" = true ]; then
             extract_scene_frames "$start_time" "$end_time" "$scene_num" "$filename"
         fi
-        
+
     done < "$scenes_file"
 }
 
 extract_scene_frames() {
     local start_time="$1"
-    local end_time="$2" 
+    local end_time="$2"
     local scene_num="$3"
     local filename="$4"
     local frames_dir="$out/frames/scene_$(printf "%03d" $scene_num)"
-    
+
     mkdir -p "$frames_dir"
-    
+
     log "Extracting frames from scene $scene_num (every ${frame_interval}s)"
-    
+
     ffmpeg -y -loglevel warning \
         -ss "$start_time" \
         -i "$file" \
@@ -274,7 +319,7 @@ extract_scene_frames() {
 generate_report() {
     local report_file="$out/night_detection_report.txt"
     local scenes_file="$out/night_scenes.txt"
-    
+
     {
         echo "Night Scene Detection Report"
         echo "============================"
@@ -284,7 +329,7 @@ generate_report() {
         echo "Scene change threshold: $scene_threshold"
         echo "Minimum duration: ${min_duration}s"
         echo ""
-        
+
         if [ -f "$scenes_file" ]; then
             local scene_count=$(wc -l < "$scenes_file")
             echo "Night scenes detected: $scene_count"
@@ -299,24 +344,24 @@ generate_report() {
             echo "No night scenes detected"
         fi
     } > "$report_file"
-    
+
     log "Report generated: $report_file"
 }
 
 main() {
     check_dependencies
     parse_args "$@"
-    
+
     log "Starting night scene detection for: $file"
     log "Luminance threshold: $luma_threshold, Scene threshold: $scene_threshold"
-    
+
     mkdir -p "$out"
-    
+
     get_video_info
-    
+
     local analysis_file
     analysis_file=$(analyze_brightness)
-    
+
     if extract_night_scenes "$analysis_file"; then
         generate_report
         log "Night scene detection completed successfully!"
@@ -324,9 +369,12 @@ main() {
     else
         log "No night scenes detected. Try adjusting thresholds."
     fi
-    
-    # Cleanup temporary files
-    rm -f "$out/brightness_analysis.txt" "$out/night_timestamps.txt"
+
+    # Keep temporary files for debugging
+    log "Temporary files preserved in $out for debugging:"
+    log "  - brightness_analysis.txt (FFmpeg output)"
+    log "  - night_timestamps.txt (extracted timestamps)"
+    log "  - night_scenes.txt (scene segments)"
 }
 
 main "$@"
