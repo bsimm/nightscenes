@@ -7,13 +7,16 @@ A collection of video processing tools for scene detection and splitting, with s
 This repository contains two main approaches to video scene analysis:
 
 1. **Black Frame Detection** (`split.sh`) - Legacy approach that splits videos at black frame transitions
-2. **Night Scene Detection** (`night_detect.sh`) - Modern brightness-based analysis for detecting scenes filmed at night
+2. **Night Scene Detection** (`night_detect.sh` / `night_detect.py`) - Modern brightness-based analysis for detecting scenes filmed at night, available in bash and Python implementations
 
 ## Scripts
 
-### night_detect.sh
+### night_detect.sh & night_detect.py
 
-Modern night scene detection using luminance analysis and scene change detection.
+Modern night scene detection using luminance analysis. Available in both bash and Python implementations with different features.
+
+#### Bash Version (night_detect.sh)
+Lightweight, dependency-minimal implementation with scene change detection.
 
 **Features:**
 - Brightness-based scene detection using FFmpeg's `signalstats` filter
@@ -38,16 +41,51 @@ Modern night scene detection using luminance analysis and scene change detection
 ./night_detect.sh -f video.mp4 -q 1 --format mov
 ```
 
-**Options:**
+#### Python Version (night_detect.py)
+Enhanced implementation with advanced analysis and experimental features.
+
+**Additional Features:**
+- Pure brightness analysis (no scene change dependency)
+- Experimental establishing shot detection using edge detection
+- More detailed logging and progress tracking
+- Separate video and frame extraction controls
+- Enhanced reporting capabilities
+
+**Usage:**
+```bash
+# Extract frames only (default behavior)
+python3 night_detect.py -f video.mp4
+
+# Extract video segments
+python3 night_detect.py -f video.mp4 -v
+
+# Extract both videos and frames
+python3 night_detect.py -f video.mp4 -v
+
+# Skip frame extraction, videos only
+python3 night_detect.py -f video.mp4 -v --no-frames
+
+# Experimental establishing shot detection
+python3 night_detect.py -f video.mp4 --establishing-shots
+```
+
+**Common Options:**
 - `-f, --file` - Input video file (required)
 - `-o, --out` - Output directory (default: ./night_scenes)
 - `-l, --luma` - Luminance threshold 0-255 (default: 30, lower=darker)
-- `-s, --scene` - Scene change sensitivity 0.1-1.0 (default: 0.3)
 - `-d, --duration` - Minimum scene duration in seconds (default: 1.0)
-- `-e, --extract-frames` - Extract individual frames from night scenes
 - `-i, --interval` - Frame extraction interval in seconds (default: 1.0)
 - `-q, --quality` - Video quality 1-31, lower=better (default: 2)
 - `--format` - Output format: mp4, mov, avi (default: mp4)
+
+**Bash-specific Options:**
+- `-s, --scene` - Scene change sensitivity 0.1-1.0 (default: 0.3)
+- `-e, --extract-frames` - Extract individual frames from night scenes
+
+**Python-specific Options:**
+- `-v, --extract-videos` - Extract video segments (default: frames only)
+- `--no-frames` - Skip frame extraction when extracting videos
+- `--establishing-shots` - [EXPERIMENTAL] Focus on wide establishing shots
 
 ### split.sh
 
@@ -97,9 +135,10 @@ This creates size-based chunks (25MB each) suitable for version control without 
 
 ### Night Detection Output
 - `night_scene_XXX_filename.mp4` - Detected night scene videos
-- `frames/scene_XXX/` - Extracted frames (if `-e` option used)
-- `night_detection_report.txt` - Detailed analysis report
-- `night_scenes.txt` - Scene timestamps and metadata
+- `frames/scene_XXX/` - Extracted frames directory structure
+- `night_detection_report.txt` - Detailed analysis report (Python version)
+- `night_scenes.txt` - Scene timestamps and metadata (bash version)
+- `brightness_analysis.txt` - Raw FFmpeg analysis output (Python version)
 
 ### Black Frame Detection Output
 - `XXXX_filename.ext` - Numbered scene files
@@ -138,12 +177,21 @@ sudo yum install ffmpeg bc python3
 
 ### Night Scene Detection Algorithm
 
+#### Bash Version (night_detect.sh)
 1. **Brightness Analysis**: Uses FFmpeg's `signalstats` filter to calculate luminance statistics for each frame
 2. **Scene Change Detection**: Applies scene change detection with configurable sensitivity
 3. **Frame Filtering**: Selects frames that meet both brightness and scene change criteria
 4. **Segmentation**: Groups consecutive qualifying frames into continuous scenes
 5. **Duration Filtering**: Removes scenes shorter than minimum duration threshold
 6. **Extraction**: Cuts video segments and optionally extracts frames
+
+#### Python Version (night_detect.py)
+1. **Brightness Analysis**: Uses FFmpeg's `showinfo` filter for detailed frame-by-frame luminance analysis
+2. **Edge Detection** (experimental): Optional `sobel` filter for detecting wide shots vs close-ups
+3. **Pure Brightness Filtering**: Selects frames based solely on luminance threshold (no scene change dependency)
+4. **Segmentation**: Groups consecutive dark frames into continuous scenes with gap tolerance
+5. **Duration Filtering**: Removes scenes shorter than minimum duration threshold
+6. **Selective Extraction**: Separate controls for video segments and frame extraction
 
 ### Black Frame Detection Algorithm
 
@@ -158,16 +206,19 @@ sudo yum install ffmpeg bc python3
 
 **No night scenes detected:**
 - Try increasing luminance threshold (`-l 50` or higher)
-- Decrease scene change sensitivity (`-s 0.2`)
+- Decrease scene change sensitivity (`-s 0.2`) [bash version only]
 - Reduce minimum duration (`-d 0.5`)
+- Switch to Python version for pure brightness analysis (no scene change dependency)
 
 **Too many short segments:**
 - Increase minimum duration (`-d 3.0`)
-- Increase scene change sensitivity (`-s 0.5`)
+- Increase scene change sensitivity (`-s 0.5`) [bash version only]
+- Use Python version with higher duration thresholds
 
 **Missing dark scenes:**
 - Lower luminance threshold (`-l 20` or lower)
 - Check video brightness with: `ffprobe -f lavfi -i "movie=video.mp4,signalstats" -show_frames`
+- Try experimental establishing shot detection: `python3 night_detect.py --establishing-shots`
 
 **FFmpeg errors:**
 - Ensure FFmpeg version supports required filters
@@ -182,8 +233,14 @@ Before processing long videos, test parameters on a short clip:
 # Extract 30-second test clip
 ffmpeg -i long_video.mp4 -t 30 -c copy test_clip.mp4
 
-# Test night detection parameters
+# Test bash version parameters
 ./night_detect.sh -f test_clip.mp4 -l 35 -s 0.4
+
+# Test Python version parameters
+python3 night_detect.py -f test_clip.mp4 -l 35 -d 0.5
+
+# Compare results between implementations
+python3 night_detect.py -f test_clip.mp4 --establishing-shots
 ```
 
 ## Performance Considerations
