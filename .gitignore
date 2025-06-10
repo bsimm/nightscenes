@@ -1,3 +1,14 @@
 .DS_Store
 .claude
+.ropeproject
 test.avi
+
+# Temporary analysis files
+night_scenes/
+ffout
+timestamps
+brightness_analysis.txt
+*-Scenes.csv
+
+# Video chunks and splits  
+test_part_*.avi
