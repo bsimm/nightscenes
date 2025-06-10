@@ -84,20 +84,14 @@ Legacy black frame detection for scene splitting at complete darkness transition
 
 ## Video Chunking for GitHub
 
-To split large videos into GitHub-compatible chunks (under 100MB):
+To split large videos into GitHub-compatible chunks (25MB each):
 
 ```bash
-# Split into 10-minute chunks for GitHub upload
-ffmpeg -i input.avi -c copy -ss 0 -t 600 part_001.avi \
-  -ss 600 -t 600 part_002.avi \
-  -ss 1200 -t 600 part_003.avi \
-  -ss 1800 -t 600 part_004.avi \
-  -ss 2400 -t 600 part_005.avi \
-  -ss 3000 -t 600 part_006.avi \
-  -ss 3600 part_007.avi
+# Split into 25MB chunks for GitHub upload
+ffmpeg -i input.avi -c copy -fs 25M -f segment -segment_format avi part_%03d.avi
 ```
 
-This creates time-based chunks suitable for version control without scene detection processing.
+This creates size-based chunks (25MB each) suitable for version control without scene detection processing.
 
 ## Output Files
 
