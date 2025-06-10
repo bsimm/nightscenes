@@ -42,16 +42,36 @@ Lightweight, dependency-minimal implementation with scene change detection.
 ```
 
 #### Python Version (night_detect.py)
-Enhanced implementation with advanced analysis and experimental features.
+Enhanced implementation with advanced analysis, preset configurations, and experimental features.
 
 **Additional Features:**
 - Pure brightness analysis (no scene change dependency)
+- **Preset configurations** for different content types and sensitivity levels
+- **Credits filtering** using OCR text detection to skip opening/closing credits
 - Experimental establishing shot detection using edge detection
 - More detailed logging and progress tracking
 - Separate video and frame extraction controls
 - Enhanced reporting capabilities
 
-**Usage:**
+**Quick Start with Presets:**
+```bash
+# Recommended balanced settings
+python3 night_detect.py -f video.mp4 --preset medium
+
+# TV show optimized (shorter scenes, credits filtering)
+python3 night_detect.py -f show.mp4 --preset tv -v
+
+# Movie optimized settings
+python3 night_detect.py -f movie.mp4 --preset movie
+
+# High sensitivity detection
+python3 night_detect.py -f video.mp4 --preset high
+
+# Fast processing for quick assessment
+python3 night_detect.py -f video.mp4 --preset quick
+```
+
+**Advanced Usage:**
 ```bash
 # Extract frames only (default behavior)
 python3 night_detect.py -f video.mp4
@@ -59,14 +79,14 @@ python3 night_detect.py -f video.mp4
 # Extract video segments
 python3 night_detect.py -f video.mp4 -v
 
-# Extract both videos and frames
-python3 night_detect.py -f video.mp4 -v
-
-# Skip frame extraction, videos only
-python3 night_detect.py -f video.mp4 -v --no-frames
+# Skip opening/closing credits
+python3 night_detect.py -f movie.mp4 --skip-credits
 
 # Experimental establishing shot detection
 python3 night_detect.py -f video.mp4 --establishing-shots
+
+# Custom parameters override preset values
+python3 night_detect.py -f video.mp4 --preset tv -l 40 -d 0.5
 ```
 
 **Common Options:**
@@ -83,9 +103,20 @@ python3 night_detect.py -f video.mp4 --establishing-shots
 - `-e, --extract-frames` - Extract individual frames from night scenes
 
 **Python-specific Options:**
+- `--preset` - Use predefined settings: high, medium, low, quick, tv, movie
 - `-v, --extract-videos` - Extract video segments (default: frames only)
 - `--no-frames` - Skip frame extraction when extracting videos
+- `--skip-credits` - Skip opening and closing credits using text detection
+- `--credits-sample-interval` - Credits detection sampling interval in seconds
 - `--establishing-shots` - [EXPERIMENTAL] Focus on wide establishing shots
+
+**Available Presets:**
+- **high** - High sensitivity, detects most dark scenes, filters credits
+- **medium** - Balanced detection with credits filtering (recommended)
+- **low** - Low sensitivity, only very dark/longer scenes
+- **quick** - Fast processing for quick assessment
+- **tv** - Optimized for TV shows and series
+- **movie** - Optimized for movies and films
 
 ### split.sh
 
@@ -148,30 +179,33 @@ This creates size-based chunks (25MB each) suitable for version control without 
 
 ## Dependencies
 
-- **FFmpeg** - With blackdetect and signalstats filter support
+- **FFmpeg** - With blackdetect, signalstats, and ocr filter support
 - **FFprobe** - For video metadata analysis
 - **bc** - For floating-point calculations
 - **awk** - For numerical formatting
 - **Python 3** - For advanced timestamp processing (night_detect.sh only)
+- **Tesseract OCR** - For credits detection (optional, when using `--skip-credits`)
 
 ### Installation
 
 **macOS (Homebrew):**
 ```bash
-brew install ffmpeg bc python3
+brew install ffmpeg bc python3 tesseract
 ```
 
 **Ubuntu/Debian:**
 ```bash
 sudo apt update
-sudo apt install ffmpeg bc python3
+sudo apt install ffmpeg bc python3 tesseract-ocr
 ```
 
 **CentOS/RHEL:**
 ```bash
 sudo yum install epel-release
-sudo yum install ffmpeg bc python3
+sudo yum install ffmpeg bc python3 tesseract
 ```
+
+**Note:** Tesseract is only required when using the `--skip-credits` feature in `night_detect.py`.
 
 ## Algorithm Details
 
@@ -187,11 +221,13 @@ sudo yum install ffmpeg bc python3
 
 #### Python Version (night_detect.py)
 1. **Brightness Analysis**: Uses FFmpeg's `showinfo` filter for detailed frame-by-frame luminance analysis
-2. **Edge Detection** (experimental): Optional `sobel` filter for detecting wide shots vs close-ups
-3. **Pure Brightness Filtering**: Selects frames based solely on luminance threshold (no scene change dependency)
-4. **Segmentation**: Groups consecutive dark frames into continuous scenes with gap tolerance
-5. **Duration Filtering**: Removes scenes shorter than minimum duration threshold
-6. **Selective Extraction**: Separate controls for video segments and frame extraction
+2. **Credits Detection** (optional): Uses FFmpeg's `ocr` filter with Tesseract to identify text-heavy regions
+3. **Credits Filtering**: Removes scenes overlapping with detected opening (first 10%) and closing (last 15%) credits
+4. **Edge Detection** (experimental): Optional `sobel` filter for detecting wide shots vs close-ups
+5. **Pure Brightness Filtering**: Selects frames based solely on luminance threshold (no scene change dependency)
+6. **Segmentation**: Groups consecutive dark frames into continuous scenes with gap tolerance
+7. **Duration Filtering**: Removes scenes shorter than minimum duration threshold
+8. **Selective Extraction**: Separate controls for video segments and frame extraction
 
 ### Black Frame Detection Algorithm
 
@@ -206,24 +242,39 @@ sudo yum install ffmpeg bc python3
 
 **No night scenes detected:**
 - Try increasing luminance threshold (`-l 50` or higher)
+- Use a different preset: `--preset high` for maximum sensitivity
 - Decrease scene change sensitivity (`-s 0.2`) [bash version only]
 - Reduce minimum duration (`-d 0.5`)
 - Switch to Python version for pure brightness analysis (no scene change dependency)
 
 **Too many short segments:**
 - Increase minimum duration (`-d 3.0`)
+- Use `--preset low` for fewer, longer scenes
 - Increase scene change sensitivity (`-s 0.5`) [bash version only]
 - Use Python version with higher duration thresholds
 
 **Missing dark scenes:**
 - Lower luminance threshold (`-l 20` or lower)
+- Use `--preset high` for maximum sensitivity
 - Check video brightness with: `ffprobe -f lavfi -i "movie=video.mp4,signalstats" -show_frames`
 - Try experimental establishing shot detection: `python3 night_detect.py --establishing-shots`
 
+**Credits filtering issues:**
+- Ensure Tesseract is installed: `tesseract --version`
+- Check FFmpeg OCR filter support: `ffmpeg -filters | grep ocr`
+- Try different sampling intervals: `--credits-sample-interval 15`
+- Disable credits filtering if causing issues: omit `--skip-credits`
+
+**Preset not working as expected:**
+- Override specific parameters: `--preset tv -l 40 -d 1.5`
+- Check preset description: `python3 night_detect.py --help`
+- Use manual parameters instead of presets for fine control
+
 **FFmpeg errors:**
-- Ensure FFmpeg version supports required filters
+- Ensure FFmpeg version supports required filters (ocr, showinfo, sobel)
 - Check input file format compatibility
 - Verify sufficient disk space for output
+- For OCR errors, ensure Tesseract language data is installed
 
 ### Testing Detection Parameters
 
@@ -233,14 +284,22 @@ Before processing long videos, test parameters on a short clip:
 # Extract 30-second test clip
 ffmpeg -i long_video.mp4 -t 30 -c copy test_clip.mp4
 
+# Test different presets quickly
+python3 night_detect.py -f test_clip.mp4 --preset quick
+python3 night_detect.py -f test_clip.mp4 --preset medium
+python3 night_detect.py -f test_clip.mp4 --preset high
+
+# Test with credits filtering
+python3 night_detect.py -f test_clip.mp4 --preset movie --skip-credits
+
 # Test bash version parameters
 ./night_detect.sh -f test_clip.mp4 -l 35 -s 0.4
 
-# Test Python version parameters
-python3 night_detect.py -f test_clip.mp4 -l 35 -d 0.5
-
 # Compare results between implementations
 python3 night_detect.py -f test_clip.mp4 --establishing-shots
+
+# Fine-tune after finding good preset
+python3 night_detect.py -f test_clip.mp4 --preset tv -l 40 -d 0.8
 ```
 
 ## Performance Considerations
