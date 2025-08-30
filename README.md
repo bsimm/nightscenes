@@ -85,6 +85,18 @@ python3 night_detect.py -f movie.mp4 --skip-credits
 # Experimental establishing shot detection
 python3 night_detect.py -f video.mp4 --establishing-shots
 
+# Comprehensive visual analysis with multiple filters
+python3 night_detect.py -f video.mp4 --rich-analysis
+
+# Dark scenes with quiet audio (whispers, ambient sounds)
+python3 night_detect.py -f video.mp4 --audio-correlation --audio-mode quiet
+
+# Dark scenes with loud audio (action sequences, explosions)
+python3 night_detect.py -f video.mp4 --audio-correlation --audio-mode loud
+
+# Custom audio thresholds
+python3 night_detect.py -f video.mp4 --audio-correlation --quiet-threshold -50 --loud-threshold -5
+
 # Custom parameters override preset values
 python3 night_detect.py -f video.mp4 --preset tv -l 40 -d 0.5
 ```
@@ -109,6 +121,11 @@ python3 night_detect.py -f video.mp4 --preset tv -l 40 -d 0.5
 - `--skip-credits` - Skip opening and closing credits using text detection
 - `--credits-sample-interval` - Credits detection sampling interval in seconds
 - `--establishing-shots` - [EXPERIMENTAL] Focus on wide establishing shots
+- `--rich-analysis` - [EXPERIMENTAL] Use combined filters for comprehensive visual analysis
+- `--audio-correlation` - [EXPERIMENTAL] Correlate dark scenes with audio volume levels
+- `--quiet-threshold` - dB threshold for quiet audio (default: -40.0)
+- `--loud-threshold` - dB threshold for loud audio (default: -10.0)
+- `--audio-mode` - Filter for quiet, loud, or both audio levels (default: both)
 
 **Available Presets:**
 - **high** - High sensitivity, detects most dark scenes, filters credits
@@ -312,6 +329,53 @@ python3 night_detect.py -f test_clip.mp4 --preset tv -l 40 -d 0.8
 ## License
 
 This project is provided as-is for educational and research purposes. FFmpeg usage subject to its license terms.
+
+## Advanced FFmpeg Filters for Visual Analysis
+
+Beyond brightness detection, FFmpeg offers many filters for finding visually interesting scenes:
+
+**Motion & Activity:**
+- `select='gt(scene,0.4)'` - Scene change detection
+- `mpdecimate` - Detect static/duplicate frames
+- Motion vector analysis with frame differencing
+
+**Visual Complexity:**
+- `entropy` - Measure image randomness/complexity
+- `ssim` - Structural similarity between frames
+- `psnr` - Peak signal-to-noise ratio
+- `histogram` - Color distribution analysis
+
+**Color Analysis:**
+- `colordetect` - Dominant color detection
+- `colorspace` - Color space analysis
+- `signalstats` - Color saturation/hue metrics
+- `chromakey` - Specific color presence detection
+
+**Face/Object Detection:**
+- `facedetect` - Human face detection
+- `dnn_detect` - AI-based object detection
+
+**Audio Correlation:**
+- `volumedetect` - Audio level analysis
+- `silencedetect` - Silence detection
+- `astats` - Audio statistics
+
+**Temporal Features:**
+- `freezedetect` - Static frame detection
+- `deflicker` analysis - Lighting variation
+- `minterpolate` - Motion interpolation metrics
+
+**Composition Analysis:**
+- `cropdetect` - Content boundaries detection
+- `blackdetect` - Black frame detection (already used)
+
+**Combined Filter Example:**
+```bash
+# Rich feature analysis combining multiple attributes
+ffmpeg -i video.mp4 -vf "showinfo,entropy,colordetect,signalstats" -f null -
+```
+
+This approach allows creating comprehensive scene rankings based on multiple visual characteristics rather than brightness alone.
 
 ## Contributing
 

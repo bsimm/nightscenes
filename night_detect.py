@@ -146,16 +146,43 @@ def get_video_info(file_path):
     log(f"Video duration: {duration:.1f}s, FPS: {fps:.2f}")
     return duration, fps
 
-def analyze_brightness(file_path, output_dir, experimental_establishing=False):
+def analyze_brightness(file_path, output_dir, experimental_establishing=False, rich_analysis=False, audio_correlation=False):
     """Analyze video brightness and optionally motion/scene characteristics"""
-    if experimental_establishing:
+    if audio_correlation:
+        log("Analyzing video with audio-visual correlation...")
+    elif rich_analysis:
+        log("Analyzing video with comprehensive visual feature detection...")
+    elif experimental_establishing:
         log("Analyzing video with experimental establishing shot detection...")
     else:
         log("Analyzing video brightness...")
     
     analysis_file = output_dir / "brightness_analysis.txt"
     
-    if experimental_establishing:
+    if audio_correlation:
+        # Audio-visual correlation analysis:
+        # - showinfo: frame info with luminance
+        # - astats: audio statistics per frame
+        # - volumedetect: volume level analysis
+        cmd = [
+            'ffmpeg', '-i', str(file_path),
+            '-vf', 'showinfo',
+            '-af', 'astats=metadata=1:reset=1,aformat=sample_fmts=fltp',
+            '-f', 'null', '-'
+        ]
+    elif rich_analysis:
+        # Comprehensive visual analysis combining multiple attributes:
+        # - showinfo: frame info with luminance/color stats
+        # - entropy: image complexity/randomness
+        # - signalstats: color distribution and saturation
+        # - sobel: edge detection for composition analysis
+        # - freezedetect: detect static frames
+        cmd = [
+            'ffmpeg', '-i', str(file_path),
+            '-vf', 'showinfo,entropy,signalstats=stat=tout+vrep+brng,sobel,freezedetect=n=-60dB:d=0.5',
+            '-f', 'null', '-'
+        ]
+    elif experimental_establishing:
         # Enhanced filter chain for establishing shot detection:
         # - showinfo: basic frame info with luminance
         # - sobel: edge detection (more edges = more detail/wide shots)
@@ -265,9 +292,12 @@ def parse_text_analysis(analysis_file, sample_interval):
     
     return text_regions
 
-def extract_night_timestamps(analysis_file, luma_threshold, experimental_establishing=False):
-    """Parse FFmpeg output to find dark frames, optionally filtering for establishing shots"""
-    if experimental_establishing:
+def extract_night_timestamps(analysis_file, luma_threshold, experimental_establishing=False, audio_correlation=False, quiet_threshold=-40.0, loud_threshold=-10.0, audio_mode='both'):
+    """Parse FFmpeg output to find dark frames, optionally filtering for establishing shots or audio correlation"""
+    if audio_correlation:
+        log("Extracting audio-correlated night scene timestamps...")
+        return extract_audio_correlated_timestamps(analysis_file, luma_threshold, quiet_threshold, loud_threshold, audio_mode)
+    elif experimental_establishing:
         log("Extracting night establishing shot timestamps...")
         return extract_establishing_shot_timestamps(analysis_file, luma_threshold)
     else:
@@ -353,6 +383,78 @@ def extract_establishing_shot_timestamps(analysis_file, luma_threshold):
     log(f"Found {len(timestamps)} potential night establishing shots")
     log(f"  - Dark frames (luma < {luma_threshold}): {sum(1 for f in frame_data if f['luma'] < luma_threshold)}")
     log(f"  - Complex frames (edges >= {edge_threshold:.2f}): {sum(1 for f in frame_data if f['edges'] >= edge_threshold)}")
+    
+    return timestamps
+
+def extract_audio_correlated_timestamps(analysis_file, luma_threshold, quiet_threshold, loud_threshold, audio_mode):
+    """Extract dark scenes correlated with specific audio volume levels"""
+    timestamps = []
+    
+    # Regex patterns for parsing both video and audio metadata
+    showinfo_pattern = r'Parsed_showinfo.*pts_time:([0-9]*\.?[0-9]+).*mean:\[([0-9]+)'
+    # Audio RMS level pattern from astats filter
+    audio_rms_pattern = r'lavfi\.astats\.Overall\.RMS_level=([+-]?[0-9]*\.?[0-9]+)'
+    
+    with open(analysis_file, 'r') as f:
+        lines = f.readlines()
+    
+    # Parse frame data with audio correlation
+    frame_data = []
+    current_timestamp = None
+    current_luma = None
+    
+    for i, line in enumerate(lines):
+        # Check for video frame info
+        showinfo_match = re.search(showinfo_pattern, line)
+        if showinfo_match:
+            current_timestamp = float(showinfo_match.group(1))
+            current_luma = int(showinfo_match.group(2))
+        
+        # Check for audio RMS level in surrounding lines
+        if current_timestamp is not None and current_luma is not None:
+            audio_rms = None
+            # Look for audio stats in nearby lines (FFmpeg interleaves output)
+            for j in range(max(0, i-5), min(len(lines), i+6)):
+                audio_match = re.search(audio_rms_pattern, lines[j])
+                if audio_match:
+                    audio_rms = float(audio_match.group(1))
+                    break
+            
+            if audio_rms is not None:
+                frame_data.append({
+                    'timestamp': current_timestamp,
+                    'luma': current_luma,
+                    'audio_rms': audio_rms
+                })
+                current_timestamp = None
+                current_luma = None
+    
+    if not frame_data:
+        log("No audio-visual correlation data found")
+        return timestamps
+    
+    # Filter based on brightness and audio criteria
+    for frame in frame_data:
+        is_dark = frame['luma'] < luma_threshold
+        audio_rms = frame['audio_rms']
+        
+        # Determine if audio level matches criteria
+        is_quiet = audio_rms < quiet_threshold
+        is_loud = audio_rms > loud_threshold
+        
+        audio_matches = False
+        if audio_mode == 'quiet' and is_quiet:
+            audio_matches = True
+        elif audio_mode == 'loud' and is_loud:
+            audio_matches = True
+        elif audio_mode == 'both' and (is_quiet or is_loud):
+            audio_matches = True
+        
+        if is_dark and audio_matches:
+            timestamps.append(frame['timestamp'])
+    
+    log(f"Found {len(timestamps)} dark scenes with {audio_mode} audio")
+    log(f"  - Audio thresholds: quiet < {quiet_threshold}dB, loud > {loud_threshold}dB")
     
     return timestamps
 
@@ -572,6 +674,16 @@ Examples:
     parser.add_argument('--format', default='mp4', help='Output format')
     parser.add_argument('--establishing-shots', action='store_true', 
                        help='[EXPERIMENTAL] Focus on wide establishing shots rather than close-ups')
+    parser.add_argument('--rich-analysis', action='store_true',
+                       help='[EXPERIMENTAL] Use combined filters for comprehensive visual analysis')
+    parser.add_argument('--audio-correlation', action='store_true',
+                       help='[EXPERIMENTAL] Correlate dark scenes with audio volume (quiet/loud)')
+    parser.add_argument('--quiet-threshold', type=float, default=-40.0,
+                       help='dB threshold for quiet audio (default: -40.0)')
+    parser.add_argument('--loud-threshold', type=float, default=-10.0,
+                       help='dB threshold for loud audio (default: -10.0)')
+    parser.add_argument('--audio-mode', choices=['quiet', 'loud', 'both'], default='both',
+                       help='Filter for quiet, loud, or both audio levels (default: both)')
     parser.add_argument('--skip-credits', action='store_true',
                        help='Skip opening and closing credits using text detection')
     parser.add_argument('--credits-sample-interval', type=int,
@@ -642,10 +754,12 @@ Examples:
         duration, fps = get_video_info(input_file)
         
         # Analyze brightness (and possibly motion/edges for establishing shots)
-        analysis_file = analyze_brightness(input_file, output_dir, args.establishing_shots)
+        analysis_file = analyze_brightness(input_file, output_dir, args.establishing_shots, args.rich_analysis, args.audio_correlation)
         
         # Extract night timestamps
-        timestamps = extract_night_timestamps(analysis_file, args.luma, args.establishing_shots)
+        timestamps = extract_night_timestamps(analysis_file, args.luma, args.establishing_shots, 
+                                            args.audio_correlation, args.quiet_threshold, 
+                                            args.loud_threshold, args.audio_mode)
         
         if not timestamps:
             log("No dark frames found. Try increasing --luma threshold.")
